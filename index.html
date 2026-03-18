@@ -219,7 +219,7 @@ section{position:relative;z-index:1}
   background:var(--card-bg);border:1px solid rgba(255,107,53,0.15);
   border-radius:12px;padding:2rem;
   backdrop-filter:blur(10px);
-  transition:all 0.4s;opacity:0;transform:translateY(30px);
+  transition:all 0.4s;opacity:1;transform:translateY(0);
 }
 .problem-card.visible{opacity:1;transform:translateY(0)}
 .problem-card:hover{border-color:rgba(255,107,53,0.4);transform:translateY(-4px);box-shadow:0 20px 50px rgba(255,107,53,0.1)}
@@ -245,9 +245,9 @@ section{position:relative;z-index:1}
   background:var(--card-bg);border:1px solid var(--card-border);
   border-radius:12px;padding:2rem;backdrop-filter:blur(10px);
   transition:all 0.4s;position:relative;overflow:hidden;
-  opacity:0;transform:translateX(-30px);
+  opacity:1;transform:translateX(0);
 }
-.solution-card:nth-child(even){transform:translateX(30px)}
+.solution-card:nth-child(even){transform:translateX(0)}
 .solution-card.visible{opacity:1;transform:translateX(0)}
 .solution-card::before{
   content:'';position:absolute;inset:0;
@@ -302,7 +302,7 @@ section{position:relative;z-index:1}
 .test-item{
   display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0;
   border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.9rem;color:var(--muted);
-  opacity:0;transform:translateX(20px);transition:all 0.3s;
+  opacity:1;transform:translateX(0);transition:all 0.3s;
 }
 .test-item.visible{opacity:1;transform:translateX(0)}
 .test-item .ti-icon{
@@ -338,7 +338,7 @@ section{position:relative;z-index:1}
 .timeline-item{
   display:grid;grid-template-columns:1fr 60px 1fr;gap:1rem;
   align-items:center;margin-bottom:2.5rem;
-  opacity:0;transform:translateY(20px);transition:all 0.5s;
+  opacity:1;transform:translateY(0);transition:all 0.5s;
 }
 .timeline-item.visible{opacity:1;transform:translateY(0)}
 .timeline-content{
@@ -484,7 +484,7 @@ footer{
 /* ========== UTILITIES ========== */
 @keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeInDown{from{opacity:0;transform:translateY(-15px)}to{opacity:1;transform:translateY(0)}}
-.reveal{opacity:0;transform:translateY(25px);transition:all 0.6s ease}
+.reveal{opacity:1;transform:translateY(0);transition:all 0.6s ease}.reveal.animate-hidden{opacity:0;transform:translateY(25px)}
 .reveal.visible{opacity:1;transform:translateY(0)}
 /* ========== PASS RATE RING ========== */
 .pass-ring{display:flex;flex-direction:column;align-items:center;gap:1rem;margin:2rem 0}
@@ -1102,7 +1102,7 @@ footer{
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.5rem">
         <div>
           <div style="font-family:var(--font-head);font-size:1.1rem;color:var(--white);margin-bottom:0.3rem">Subscription</div>
-          <div style="font-family:var(--font-head);font-size:1.6rem;color:var(--orange)">₦50K<span style="font-size:0.9rem">/month</span></div>
+          <div style="font-family:var(--font-head);font-size:1.6rem;color:var(--orange)">$100<span style="font-size:0.9rem">/month</span></div>
           <div style="color:var(--muted);font-size:0.85rem">Full talent pool access</div>
         </div>
         <div>
@@ -1578,30 +1578,68 @@ function showTab(i){
 }
 
 /* ===== SCROLL REVEAL ===== */
-const revealObserver=new IntersectionObserver((entries)=>{
-  entries.forEach(e=>{
-    if(e.isIntersecting){
-      e.target.classList.add('visible');
-      revealObserver.unobserve(e.target);
+// Mark elements for animation only if IntersectionObserver is supported
+// and only if user hasn't scrolled yet (elements below fold)
+function initReveal(){
+  const allReveal = document.querySelectorAll('.reveal,.problem-card,.solution-card,.timeline-item,.company-card');
+  // Add animation CSS
+  const style = document.createElement('style');
+  style.textContent = `
+    .anim-ready{opacity:0!important;transform:translateY(22px)!important;transition:opacity 0.55s ease,transform 0.55s ease!important}
+    .solution-card.anim-ready{transform:translateX(-22px)!important}
+    .solution-card:nth-child(even).anim-ready{transform:translateX(22px)!important}
+    .anim-ready.visible{opacity:1!important;transform:translateY(0)!important;transform:none!important}
+    .test-item.anim-ready{opacity:0!important;transform:translateX(18px)!important}
+    .test-item.anim-ready.visible{opacity:1!important;transform:translateX(0)!important}
+  `;
+  document.head.appendChild(style);
+
+  const observer = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        e.target.classList.remove('anim-ready');
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  },{threshold:0.08,rootMargin:'0px 0px -40px 0px'});
+
+  allReveal.forEach(el=>{
+    const rect = el.getBoundingClientRect();
+    // Only animate elements that start below the fold
+    if(rect.top > window.innerHeight){
+      el.classList.add('anim-ready');
+      observer.observe(el);
+    } else {
+      el.classList.add('visible');
     }
   });
-},{threshold:0.1,rootMargin:'0px 0px -50px 0px'});
-document.querySelectorAll('.reveal,.problem-card,.solution-card,.timeline-item,.company-card').forEach(el=>revealObserver.observe(el));
+}
+if('IntersectionObserver' in window){
+  initReveal();
+} // else: elements already visible by default — no JS needed
 
 /* ===== TEST ITEMS REVEAL ===== */
-const testObserver=new IntersectionObserver((entries)=>{
-  entries.forEach(e=>{
-    if(e.isIntersecting){
-      const items=e.target.querySelectorAll('.test-item');
-      items.forEach((item,i)=>{
-        setTimeout(()=>item.classList.add('visible'),i*100);
-      });
-      testObserver.unobserve(e.target);
-    }
-  });
-},{threshold:0.2});
 const testEl=document.getElementById('test-items');
-if(testEl)testObserver.observe(testEl);
+if(testEl && 'IntersectionObserver' in window){
+  const testObserver=new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        const items=e.target.querySelectorAll('.test-item');
+        items.forEach((item,i)=>{
+          setTimeout(()=>{item.classList.remove('anim-ready');item.classList.add('visible')},i*90);
+        });
+        testObserver.unobserve(e.target);
+      }
+    });
+  },{threshold:0.1});
+  // Only animate test items if below fold
+  const rect=testEl.getBoundingClientRect();
+  if(rect.top>window.innerHeight){
+    testEl.querySelectorAll('.test-item').forEach(i=>i.classList.add('anim-ready'));
+    testObserver.observe(testEl);
+  }
+}
 
 /* ===== COUNT-UP STATS ===== */
 function animateCount(el){
